@@ -10,6 +10,7 @@ if (window.Telegram?.WebApp) {
         tg.initDataUnsafe.user
 
     console.log(telegramUser)
+    alert(JSON.stringify(telegramUser))
 }
 
 const API_URL =
