@@ -53,8 +53,7 @@ app.post('/register', async (req, res) => {
         await addRegistration(
             name,
             phone,
-            workshopId,
-            telegramId
+            workshopId
         )
 
         res.send('Registration successful')

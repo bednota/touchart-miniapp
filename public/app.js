@@ -80,7 +80,7 @@ async function loadWorkshops() {
 
                 const name =
                     telegramUser?.first_name ||
-                    prompt('Введите имя')
+                prompt('Введите имя')
 
                 const phone =
                     prompt('Введите телефон')
@@ -126,9 +126,6 @@ async function register(name, phone) {
 
                     workshopId:
                         selectedWorkshopId
-
-                    telegramId:
-                        telegramUser?.id || ''
                 })
             }
         )
