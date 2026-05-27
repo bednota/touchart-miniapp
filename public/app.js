@@ -24,7 +24,7 @@ async function loadWorkshops() {
 
         console.log('LOADING WORKSHOPS')
 
-        const response = await fetch('/workshops', {
+        const response = await fetch('https://touchart-miniapp.onrender.com/workshops', {
             method: 'GET',
             cache: 'no-store'
         })
@@ -94,7 +94,7 @@ submitBtn.addEventListener('click', async () => {
 
     try {
 
-        await fetch('/register', {
+        await fetch('https://touchart-miniapp.onrender.com/register', {
 
             method: 'POST',
 
