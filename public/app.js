@@ -1,6 +1,19 @@
+const tg = window.Telegram.WebApp
+
+tg.expand()
+
+console.log(tg)
+
+console.log(tg.initDataUnsafe)
+
+const telegramUser =
+    tg.initDataUnsafe.user
+
+alert(JSON.stringify(telegramUser))
+
 let telegramUser = null
 
-if (window.Telegram?.WebApp) {
+/**if (window.Telegram?.WebApp) {
 
     const tg = window.Telegram.WebApp
 
@@ -11,7 +24,7 @@ if (window.Telegram?.WebApp) {
 
     console.log(telegramUser)
     alert(JSON.stringify(telegramUser))
-}
+}*/
 
 const API_URL =
     'https://touchart-miniapp.onrender.com'
