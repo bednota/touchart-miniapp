@@ -1,3 +1,17 @@
+let telegramUser = null
+
+if (window.Telegram?.WebApp) {
+
+    const tg = window.Telegram.WebApp
+
+    tg.expand()
+
+    telegramUser =
+        tg.initDataUnsafe.user
+
+    console.log(telegramUser)
+}
+
 const API_URL =
     'https://touchart-miniapp.onrender.com'
 
@@ -65,6 +79,7 @@ async function loadWorkshops() {
                 selectedWorkshopId = id
 
                 const name =
+                    telegramUser?.first_name ||
                     prompt('Введите имя')
 
                 const phone =
@@ -111,6 +126,9 @@ async function register(name, phone) {
 
                     workshopId:
                         selectedWorkshopId
+
+                    telegramId:
+                        telegramUser?.id || ''
                 })
             }
         )
