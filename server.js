@@ -45,7 +45,8 @@ app.post('/register', async (req, res) => {
         const {
             name,
             phone,
-            workshopId
+            workshopId,
+            telegramId
         } = req.body
 
         //await decreasePlaces(workshopId)
@@ -53,7 +54,8 @@ app.post('/register', async (req, res) => {
         await addRegistration(
             name,
             phone,
-            workshopId
+            workshopId,
+            telegramId
         )
 
         res.send('Registration successful')

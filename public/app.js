@@ -125,7 +125,10 @@ async function register(name, phone) {
                     phone,
 
                     workshopId:
-                        selectedWorkshopId
+                        selectedWorkshopId,
+
+                    telegramId:
+                        telegramUser?.id || ''
                 })
             }
         )

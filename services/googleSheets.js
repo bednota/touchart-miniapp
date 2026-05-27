@@ -79,7 +79,8 @@ async function getWorkshops() {
 async function addRegistration(
     name,
     phone,
-    workshopId
+    workshopId,
+    telegramId
 ) {
 
     await sheets.spreadsheets.values.append({
@@ -93,7 +94,7 @@ async function addRegistration(
         requestBody: {
 
             values: [
-                [name, phone, workshopId]
+                [name, phone, workshopId, telegramId]
             ]
         }
     })
