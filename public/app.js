@@ -1,51 +1,46 @@
-const tg = window.Telegram.WebApp
-
-tg.expand()
-
-console.log(tg.initDataUnsafe)
+const API_URL =
+    'https://touchart-miniapp.onrender.com'
 
 let selectedWorkshopId = ''
-
-const workshopList = document.querySelector('.workshop-list')
-
-const loading = document.querySelector('.loading')
-
-const modal = document.querySelector('.modal')
-
-const submitBtn = document.getElementById('submitBtn')
 
 async function loadWorkshops() {
 
     try {
 
-        loading.style.display = 'block'
-
-        workshopList.innerHTML = ''
-
         console.log('LOADING WORKSHOPS')
 
-        const response = await fetch('https://touchart-miniapp.onrender.com/workshops', {
-            method: 'GET',
-            cache: 'no-store'
-        })
+        const response = await fetch(
+            `${API_URL}/workshops`
+        )
 
-        console.log('RESPONSE RECEIVED')
+        console.log('FETCH COMPLETED')
 
-        const workshops = await response.json()
+        const workshops =
+            await response.json()
 
         console.log(workshops)
 
-        loading.style.display = 'none'
+        const workshopsContainer =
+            document.getElementById('workshops')
+
+        workshopsContainer.innerHTML = ''
 
         workshops.forEach(workshop => {
 
-            const [id, title, date, places] = workshop
+            const [
+                id,
+                title,
+                date,
+                places
+            ] = workshop
 
-            const card = document.createElement('div')
+            const card =
+                document.createElement('div')
 
             card.className = 'workshop-card'
 
             card.innerHTML = `
+
                 <h2>${title}</h2>
 
                 <p>Дата: ${date}</p>
@@ -63,55 +58,76 @@ async function loadWorkshops() {
             `
 
             const button =
-                card.querySelector('.register-btn')
+                card.querySelector('button')
 
             button.addEventListener('click', () => {
 
                 selectedWorkshopId = id
 
-                modal.classList.remove('hidden')
+                const name =
+                    prompt('Введите имя')
+
+                const phone =
+                    prompt('Введите телефон')
+
+                register(name, phone)
             })
 
-            workshopList.appendChild(card)
+            workshopsContainer.appendChild(card)
         })
 
     } catch (error) {
 
         console.log(error)
 
-        loading.innerHTML =
-            'Ошибка загрузки мастер-классов'
+        document.getElementById('workshops')
+            .innerHTML = `
+                <h2>
+                    Ошибка загрузки
+                </h2>
+            `
     }
 }
 
-submitBtn.addEventListener('click', async () => {
-
-    const name =
-        document.getElementById('name').value
-
-    const phone =
-        document.getElementById('phone').value
+async function register(name, phone) {
 
     try {
 
-        await fetch('https://touchart-miniapp.onrender.com/register', {
+        const response = await fetch(
+            `${API_URL}/register`,
+            {
 
-            method: 'POST',
+                method: 'POST',
 
-            headers: {
-                'Content-Type': 'application/json'
-            },
+                headers: {
+                    'Content-Type':
+                        'application/json'
+                },
 
-            body: JSON.stringify({
-                name,
-                phone,
-                workshopId: selectedWorkshopId
-            })
-        })
+                body: JSON.stringify({
 
-        alert('Вы успешно записаны!')
+                    name,
+                    phone,
 
-        modal.classList.add('hidden')
+                    workshopId:
+                        selectedWorkshopId
+                })
+            }
+        )
+
+        if (!response.ok) {
+
+            const error =
+                await response.text()
+
+            alert(error)
+
+            return
+        }
+
+        alert('Вы успешно записаны')
+
+        loadWorkshops()
 
     } catch (error) {
 
@@ -119,8 +135,11 @@ submitBtn.addEventListener('click', async () => {
 
         alert('Ошибка регистрации')
     }
-})
+}
 
 window.onload = () => {
+
+    console.log('WINDOW LOADED')
+
     loadWorkshops()
 }
