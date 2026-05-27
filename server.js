@@ -2,10 +2,13 @@
 const {
     getWorkshops,
     addRegistration,
+    archiveWorkshop,
     decreasePlaces
 } = require('./services/googleSheets')
 
 require('dotenv').config()
+
+
 
 const express = require('express')
 const cors = require('cors')
@@ -72,3 +75,31 @@ app.listen(PORT, () => {
     console.log(`Server started on port ${PORT}`)
 })
 
+app.post(
+    '/archive/:id',
+
+    async (req, res) => {
+
+        try {
+
+            const workshopId =
+                req.params.id
+
+            await archiveWorkshop(
+                workshopId
+            )
+
+            res.send(
+                'Архивирование завершено'
+            )
+
+        } catch (error) {
+
+            console.log(error)
+
+            res.status(500).send(
+                'Ошибка архивирования'
+            )
+        }
+    }
+)

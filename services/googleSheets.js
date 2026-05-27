@@ -53,7 +53,7 @@ async function getWorkshops() {
     // Считаем свободные места
     const result = workshops.map(workshop => {
 
-        const [id, title, date, maxPlaces] = workshop
+        const [id, title, date, time, maxPlaces] = workshop
 
         const registrationsCount =
             registrations.filter(reg => {
@@ -69,6 +69,7 @@ async function getWorkshops() {
             id,
             title,
             date,
+            time,
             freePlaces
         ]
     })
@@ -104,7 +105,217 @@ async function addRegistration(
 }
 
 
+
+async function archiveWorkshop(workshopId) {
+
+    try {
+
+        const client =
+            await auth.getClient()
+
+        // 1. Получаем мастер-классы
+
+        const workshopsResponse =
+            await sheets.spreadsheets.values.get({
+
+                auth: client,
+
+                spreadsheetId:
+                    process.env.SPREADSHEET_ID,
+
+                range: 'workshops!A2:E'
+            })
+
+        const workshops =
+            workshopsResponse.data.values || []
+
+        // 2. Находим нужный мастер-класс
+
+        const workshop =
+            workshops.find(w => w[0] === workshopId)
+
+        if (!workshop) {
+
+            throw new Error(
+                'Мастер-класс не найден'
+            )
+        }
+
+        const [
+            id,
+            title,
+            date,
+            time,
+            maxPlaces
+        ] = workshop
+
+        // 3. Получаем registrations
+
+        const registrationsResponse =
+            await sheets.spreadsheets.values.get({
+
+                auth: client,
+
+                spreadsheetId:
+                    process.env.SPREADSHEET_ID,
+
+                range: 'registrations!A2:D'
+            })
+
+        const registrations =
+            registrationsResponse.data.values || []
+
+        // 4. Фильтруем участников этого МК
+
+        const workshopRegistrations =
+            registrations.filter(reg =>
+                reg[2] === workshopId
+            )
+
+        // 5. Архивируем мастер-класс
+
+        await sheets.spreadsheets.values.append({
+
+            auth: client,
+
+            spreadsheetId:
+                process.env.SPREADSHEET_ID,
+
+            range:
+                'workshops_archive!A:G',
+
+            valueInputOption:
+                'USER_ENTERED',
+
+            requestBody: {
+
+                values: [[
+
+                    id,
+                    title,
+                    date,
+                    time,
+                    maxPlaces,
+
+                    workshopRegistrations.length,
+
+                    new Date().toLocaleString()
+                ]]
+            }
+        })
+
+        // 6. Архивируем registrations
+
+        for (const reg of workshopRegistrations) {
+
+            const [
+                clientName,
+                phone,
+                regWorkshopId,
+                telegramId
+            ] = reg
+
+            await sheets
+                .spreadsheets
+                .values
+                .append({
+
+                    auth: client,
+
+                    spreadsheetId:
+                        process.env.SPREADSHEET_ID,
+
+                    range:
+                        'registrations_archive!A:F',
+
+                    valueInputOption:
+                        'USER_ENTERED',
+
+                    requestBody: {
+
+                        values: [[
+
+                            regWorkshopId,
+                            clientName,
+                            phone,
+                            telegramId,
+                            title,
+
+                            new Date()
+                                .toLocaleString()
+                        ]]
+                    }
+                })
+        }
+        // 7. Удаляем мастер-класс
+        // из active workshops
+
+        const updatedWorkshops =
+            workshops.filter(w =>
+                w[0] !== workshopId
+            )
+
+        await sheets.spreadsheets.values.update({
+
+            auth: client,
+
+            spreadsheetId:
+                process.env.SPREADSHEET_ID,
+
+            range: 'workshops!A2:E',
+
+            valueInputOption:
+                'USER_ENTERED',
+
+            requestBody: {
+
+                values: updatedWorkshops
+            }
+        })
+
+        // 8. Удаляем registrations
+        // этого мастер-класса
+
+        const updatedRegistrations =
+            registrations.filter(reg =>
+                reg[2] !== workshopId
+            )
+
+        await sheets.spreadsheets.values.update({
+
+            auth: client,
+
+            spreadsheetId:
+                process.env.SPREADSHEET_ID,
+
+            range: 'registrations!A2:D',
+
+            valueInputOption:
+                'USER_ENTERED',
+
+            requestBody: {
+
+                values:
+                    updatedRegistrations
+            }
+        })
+        
+        console.log(
+            'ARCHIVE COMPLETED'
+        )
+
+    } catch (error) {
+
+        console.log(
+            'ARCHIVE ERROR'
+        )
+
+        console.log(error)
+    }
+}
+
 module.exports = {
     getWorkshops,
-    addRegistration
+    addRegistration,
+    archiveWorkshop
 }

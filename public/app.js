@@ -11,7 +11,6 @@ if (window.Telegram?.WebApp) {
         tg.initDataUnsafe.user
 
     console.log(telegramUser)
-    alert(JSON.stringify(telegramUser))
 }
 
 const API_URL =
@@ -47,6 +46,7 @@ async function loadWorkshops() {
                 id,
                 title,
                 date,
+                time,
                 places
             ] = workshop
 
@@ -60,6 +60,7 @@ async function loadWorkshops() {
                 <h2>${title}</h2>
 
                 <p>Дата: ${date}</p>
+                <p>Время: ${time}</p>
 
                 <p>Свободных мест: ${places}</p>
 
