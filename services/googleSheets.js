@@ -1,14 +1,20 @@
 const { google } = require('googleapis')
 
 const auth = new google.auth.GoogleAuth({
+
     keyFile: 'credentials.json',
-    scopes: ['https://www.googleapis.com/auth/spreadsheets']
+
+    scopes: [
+        'https://www.googleapis.com/auth/spreadsheets'
+    ]
 })
 
-const sheets = google.sheets({
-    version: 'v4',
-    auth
-})
+const sheets =
+    google.sheets('v4')
+
+// =========================
+// CACHE
+// =========================
 
 let workshopsCache = []
 
@@ -16,135 +22,288 @@ let lastFetchTime = 0
 
 const CACHE_DURATION = 60000
 
+// =========================
+// GET WORKSHOPS
+// =========================
+
 async function getWorkshops() {
 
-    const client = await auth.getClient()
+    try {
 
-    // Получаем мастер-классы
-    const workshopsResponse =
-        await sheets.spreadsheets.values.get({
+        // CACHE
 
-            auth: client,
+        const now = Date.now()
 
-            spreadsheetId:
-                process.env.SPREADSHEET_ID,
+        if (
 
-            range: 'workshops!A2:E'
-        })
+            workshopsCache.length > 0 &&
 
-    // Получаем регистрации
-    const registrationsResponse =
-        await sheets.spreadsheets.values.get({
+            now - lastFetchTime <
+            CACHE_DURATION
 
-            auth: client,
+        ) {
 
-            spreadsheetId:
-                process.env.SPREADSHEET_ID,
-
-            range: 'registrations!A2:C'
-        })
-
-    const workshops =
-        workshopsResponse.data.values || []
-
-    const registrations =
-        registrationsResponse.data.values || []
-
-    // Считаем свободные места
-    const result = workshops.map(workshop => {
-
-        const [id, title, date, time, maxPlaces] = workshop
-
-        const registrationsCount =
-            registrations.reduce(
-                (sum, reg) => {
-
-                    return (
-                        sum +
-                        Number(reg[4] || 1)
-                    )
-                },
-
-                0
+            console.log(
+                'CACHE USED'
             )
 
-        const freePlaces =
-            parseInt(maxPlaces) - registrationsCount
+            return workshopsCache
+        }
 
-        return [
-            id,
-            title,
-            date,
-            time,
-            freePlaces
-        ]
-    })
+        const client =
+            await auth.getClient()
 
-    return result
+        // =========================
+        // WORKSHOPS
+        // =========================
+
+        const workshopsResponse =
+            await sheets
+                .spreadsheets
+                .values
+                .get({
+
+                    auth: client,
+
+                    spreadsheetId:
+                        process.env.SPREADSHEET_ID,
+
+                    range:
+                        'workshops!A2:E'
+                })
+
+        const workshops =
+            workshopsResponse
+                .data
+                .values || []
+
+        // =========================
+        // REGISTRATIONS
+        // =========================
+
+        const registrationsResponse =
+            await sheets
+                .spreadsheets
+                .values
+                .get({
+
+                    auth: client,
+
+                    spreadsheetId:
+                        process.env.SPREADSHEET_ID,
+
+                    range:
+                        'registrations!A2:E'
+                })
+
+        const registrations =
+            registrationsResponse
+                .data
+                .values || []
+
+        // =========================
+        // CALCULATE FREE PLACES
+        // =========================
+
+        const formattedWorkshops =
+            workshops.map(workshop => {
+
+                const [
+                    id,
+                    title,
+                    date,
+                    time,
+                    maxPlaces
+                ] = workshop
+
+                const workshopRegistrations =
+
+                    registrations.filter(
+                        reg =>
+                            reg[2] === id
+                    )
+
+                // =========================
+                // OCCUPIED PLACES
+                // =========================
+
+                const occupiedPlaces =
+
+                    workshopRegistrations.reduce(
+
+                        (sum, reg) => {
+
+                            return (
+                                sum +
+                                Number(
+                                    reg[4] || 1
+                                )
+                            )
+                        },
+
+                        0
+                    )
+
+                const freePlaces =
+
+                    Number(maxPlaces) -
+
+                    occupiedPlaces
+
+                return [
+
+                    id,
+                    title,
+                    date,
+                    time,
+                    freePlaces
+                ]
+            })
+
+        // =========================
+        // CACHE SAVE
+        // =========================
+
+        workshopsCache =
+            formattedWorkshops
+
+        lastFetchTime =
+            Date.now()
+
+        console.log(
+            'WORKSHOPS LOADED'
+        )
+
+        return formattedWorkshops
+
+    } catch (error) {
+
+        console.log(
+            'GET WORKSHOPS ERROR'
+        )
+
+        console.log(error)
+
+        return []
+    }
 }
 
+// =========================
+// ADD REGISTRATION
+// =========================
+
 async function addRegistration(
+
     name,
     phone,
     workshopId,
     telegramId,
     peopleCount
+
 ) {
-
-    await sheets.spreadsheets.values.append({
-
-        spreadsheetId: process.env.SPREADSHEET_ID,
-
-        range: 'registrations!A:E',
-
-        valueInputOption: 'USER_ENTERED',
-
-        requestBody: {
-
-            values: [
-                [name, phone, workshopId, telegramId, peopleCount]
-            ]
-        }
-    })
-    //console.log(name)
-    //console.log(phone)
-    //console.log(workshopId)
-}
-
-
-
-async function archiveWorkshop(workshopId) {
 
     try {
 
         const client =
             await auth.getClient()
 
-        // 1. Получаем мастер-классы
-
-        const workshopsResponse =
-            await sheets.spreadsheets.values.get({
+        await sheets
+            .spreadsheets
+            .values
+            .append({
 
                 auth: client,
 
                 spreadsheetId:
                     process.env.SPREADSHEET_ID,
 
-                range: 'workshops!A2:E'
+                range:
+                    'registrations!A:E',
+
+                valueInputOption:
+                    'USER_ENTERED',
+
+                requestBody: {
+
+                    values: [[
+
+                        name,
+                        phone,
+                        workshopId,
+                        telegramId,
+                        peopleCount
+                    ]]
+                }
             })
 
-        const workshops =
-            workshopsResponse.data.values || []
+        // RESET CACHE
 
-        // 2. Находим нужный мастер-класс
+        workshopsCache = []
+
+        console.log(
+            'REGISTRATION CREATED'
+        )
+
+    } catch (error) {
+
+        console.log(
+            'ADD REGISTRATION ERROR'
+        )
+
+        console.log(error)
+    }
+}
+
+// =========================
+// ARCHIVE WORKSHOP
+// =========================
+
+async function archiveWorkshop(
+    workshopId
+) {
+
+    try {
+
+        const client =
+            await auth.getClient()
+
+        // =========================
+        // GET WORKSHOPS
+        // =========================
+
+        const workshopsResponse =
+            await sheets
+                .spreadsheets
+                .values
+                .get({
+
+                    auth: client,
+
+                    spreadsheetId:
+                        process.env.SPREADSHEET_ID,
+
+                    range:
+                        'workshops!A2:E'
+                })
+
+        const workshops =
+            workshopsResponse
+                .data
+                .values || []
+
+        // =========================
+        // FIND WORKSHOP
+        // =========================
 
         const workshop =
-            workshops.find(w => w[0] === workshopId)
+            workshops.find(
+                w => w[0] === workshopId
+            )
 
         if (!workshop) {
 
             throw new Error(
-                'Мастер-класс не найден'
+                'Workshop not found'
             )
         }
 
@@ -156,70 +315,116 @@ async function archiveWorkshop(workshopId) {
             maxPlaces
         ] = workshop
 
-        // 3. Получаем registrations
+        // =========================
+        // GET REGISTRATIONS
+        // =========================
 
         const registrationsResponse =
-            await sheets.spreadsheets.values.get({
+            await sheets
+                .spreadsheets
+                .values
+                .get({
+
+                    auth: client,
+
+                    spreadsheetId:
+                        process.env.SPREADSHEET_ID,
+
+                    range:
+                        'registrations!A2:E'
+                })
+
+        const registrations =
+            registrationsResponse
+                .data
+                .values || []
+
+        // =========================
+        // FILTER REGISTRATIONS
+        // =========================
+
+        const workshopRegistrations =
+
+            registrations.filter(
+                reg =>
+                    reg[2] === workshopId
+            )
+
+        // =========================
+        // CALCULATE PARTICIPANTS
+        // =========================
+
+        const actualParticipants =
+
+            workshopRegistrations.reduce(
+
+                (sum, reg) => {
+
+                    return (
+                        sum +
+                        Number(
+                            reg[4] || 1
+                        )
+                    )
+                },
+
+                0
+            )
+
+        // =========================
+        // ARCHIVE WORKSHOP
+        // =========================
+
+        await sheets
+            .spreadsheets
+            .values
+            .append({
 
                 auth: client,
 
                 spreadsheetId:
                     process.env.SPREADSHEET_ID,
 
-                range: 'registrations!A2:E'
+                range:
+                    'workshops_archive!A:G',
+
+                valueInputOption:
+                    'USER_ENTERED',
+
+                requestBody: {
+
+                    values: [[
+
+                        id,
+                        title,
+                        date,
+                        time,
+                        maxPlaces,
+                        actualParticipants,
+
+                        new Date()
+                            .toLocaleString()
+                    ]]
+                }
             })
 
-        const registrations =
-            registrationsResponse.data.values || []
+        // =========================
+        // ARCHIVE REGISTRATIONS
+        // =========================
 
-        // 4. Фильтруем участников этого МК
-
-        const workshopRegistrations =
-            registrations.filter(reg =>
-                reg[2] === workshopId
-            )
-
-        // 5. Архивируем мастер-класс
-
-        await sheets.spreadsheets.values.append({
-
-            auth: client,
-
-            spreadsheetId:
-                process.env.SPREADSHEET_ID,
-
-            range:
-                'workshops_archive!A:G',
-
-            valueInputOption:
-                'USER_ENTERED',
-
-            requestBody: {
-
-                values: [[
-
-                    id,
-                    title,
-                    date,
-                    time,
-                    maxPlaces,
-
-                    workshopRegistrations.length,
-
-                    new Date().toLocaleString()
-                ]]
-            }
-        })
-
-        // 6. Архивируем registrations
-
-        for (const reg of workshopRegistrations) {
+        for (
+            const reg
+            of workshopRegistrations
+        ) {
 
             const [
+
                 clientName,
                 phone,
                 regWorkshopId,
-                telegramId
+                telegramId,
+                peopleCount
+
             ] = reg
 
             await sheets
@@ -233,7 +438,7 @@ async function archiveWorkshop(workshopId) {
                         process.env.SPREADSHEET_ID,
 
                     range:
-                        'registrations_archive!A:F',
+                        'registrations_archive!A:G',
 
                     valueInputOption:
                         'USER_ENTERED',
@@ -246,6 +451,7 @@ async function archiveWorkshop(workshopId) {
                             clientName,
                             phone,
                             telegramId,
+                            peopleCount,
                             title,
 
                             new Date()
@@ -254,59 +460,79 @@ async function archiveWorkshop(workshopId) {
                     }
                 })
         }
-        // 7. Удаляем мастер-класс
-        // из active workshops
+
+        // =========================
+        // REMOVE FROM ACTIVE
+        // =========================
 
         const updatedWorkshops =
-            workshops.filter(w =>
-                w[0] !== workshopId
+
+            workshops.filter(
+                w =>
+                    w[0] !== workshopId
             )
 
-        await sheets.spreadsheets.values.update({
+        await sheets
+            .spreadsheets
+            .values
+            .update({
 
-            auth: client,
+                auth: client,
 
-            spreadsheetId:
-                process.env.SPREADSHEET_ID,
+                spreadsheetId:
+                    process.env.SPREADSHEET_ID,
 
-            range: 'workshops!A2:E',
+                range:
+                    'workshops!A2:E',
 
-            valueInputOption:
-                'USER_ENTERED',
+                valueInputOption:
+                    'USER_ENTERED',
 
-            requestBody: {
+                requestBody: {
 
-                values: updatedWorkshops
-            }
-        })
+                    values:
+                        updatedWorkshops
+                }
+            })
 
-        // 8. Удаляем registrations
-        // этого мастер-класса
+        // =========================
+        // REMOVE REGISTRATIONS
+        // =========================
 
         const updatedRegistrations =
-            registrations.filter(reg =>
-                reg[2] !== workshopId
+
+            registrations.filter(
+                reg =>
+                    reg[2] !== workshopId
             )
 
-        await sheets.spreadsheets.values.update({
+        await sheets
+            .spreadsheets
+            .values
+            .update({
 
-            auth: client,
+                auth: client,
 
-            spreadsheetId:
-                process.env.SPREADSHEET_ID,
+                spreadsheetId:
+                    process.env.SPREADSHEET_ID,
 
-            range: 'registrations!A2:D',
+                range:
+                    'registrations!A2:E',
 
-            valueInputOption:
-                'USER_ENTERED',
+                valueInputOption:
+                    'USER_ENTERED',
 
-            requestBody: {
+                requestBody: {
 
-                values:
-                    updatedRegistrations
-            }
-        })
-        
+                    values:
+                        updatedRegistrations
+                }
+            })
+
+        // RESET CACHE
+
+        workshopsCache = []
+
         console.log(
             'ARCHIVE COMPLETED'
         )
@@ -321,8 +547,15 @@ async function archiveWorkshop(workshopId) {
     }
 }
 
+// =========================
+// EXPORTS
+// =========================
+
 module.exports = {
+
     getWorkshops,
+
     addRegistration,
+
     archiveWorkshop
 }
