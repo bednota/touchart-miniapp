@@ -49,7 +49,8 @@ app.post('/register', async (req, res) => {
             name,
             phone,
             workshopId,
-            telegramId
+            telegramId,
+            peopleCount
         } = req.body
 
         //await decreasePlaces(workshopId)
@@ -58,7 +59,8 @@ app.post('/register', async (req, res) => {
             name,
             phone,
             workshopId,
-            telegramId
+            telegramId,
+            peopleCount
         )
 
         res.send('Registration successful')
@@ -75,7 +77,7 @@ app.listen(PORT, () => {
     console.log(`Server started on port ${PORT}`)
 })
 
-app.get(
+app.post(
     '/archive/:id',
 
     async (req, res) => {

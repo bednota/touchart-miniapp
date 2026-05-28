@@ -88,7 +88,22 @@ async function loadWorkshops() {
                 const phone =
                     prompt('Введите телефон')
 
-                register(name, phone)
+                const peopleCount = Number(
+                    prompt(
+                        'Количество участников'
+                    )
+                )
+
+                if (peopleCount > places) {
+
+                    alert(
+                        'Недостаточно свободных мест'
+                    )
+
+                    return
+                }
+
+                register(name, phone, peopleCount)
             })
 
             workshopsContainer.appendChild(card)
@@ -107,7 +122,7 @@ async function loadWorkshops() {
     }
 }
 
-async function register(name, phone) {
+async function register(name, phone, peopleCount) {
 
     try {
 
@@ -131,7 +146,10 @@ async function register(name, phone) {
                         selectedWorkshopId,
 
                     telegramId:
-                        telegramUser?.id || ''
+                        telegramUser?.id || '',
+
+                    peopleCount
+
                 })
             }
         )

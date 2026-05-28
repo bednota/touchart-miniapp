@@ -56,11 +56,17 @@ async function getWorkshops() {
         const [id, title, date, time, maxPlaces] = workshop
 
         const registrationsCount =
-            registrations.filter(reg => {
+            registrations.reduce(
+                (sum, reg) => {
 
-                return reg[2] === id
+                    return (
+                        sum +
+                        Number(reg[4] || 1)
+                    )
+                },
 
-            }).length
+                0
+            )
 
         const freePlaces =
             parseInt(maxPlaces) - registrationsCount
@@ -81,21 +87,22 @@ async function addRegistration(
     name,
     phone,
     workshopId,
-    telegramId
+    telegramId,
+    peopleCount
 ) {
 
     await sheets.spreadsheets.values.append({
 
         spreadsheetId: process.env.SPREADSHEET_ID,
 
-        range: 'registrations!A:C',
+        range: 'registrations!A:E',
 
         valueInputOption: 'USER_ENTERED',
 
         requestBody: {
 
             values: [
-                [name, phone, workshopId, telegramId]
+                [name, phone, workshopId, telegramId, peopleCount]
             ]
         }
     })
@@ -159,7 +166,7 @@ async function archiveWorkshop(workshopId) {
                 spreadsheetId:
                     process.env.SPREADSHEET_ID,
 
-                range: 'registrations!A2:D'
+                range: 'registrations!A2:E'
             })
 
         const registrations =
