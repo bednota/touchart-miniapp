@@ -29,7 +29,7 @@ async function getWorkshops() {
             spreadsheetId:
                 process.env.SPREADSHEET_ID,
 
-            range: 'workshops!A2:D'
+            range: 'workshops!A2:E'
         })
 
     // Получаем регистрации
