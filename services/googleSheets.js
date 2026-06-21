@@ -532,7 +532,9 @@ async function archiveWorkshop(
         // RESET CACHE
 
         workshopsCache = []
-
+        
+        await generateAnalytics()
+        
         console.log(
             'ARCHIVE COMPLETED'
         )
@@ -547,6 +549,234 @@ async function archiveWorkshop(
     }
 }
 
+async function generateAnalytics() {
+
+    const client =
+        await auth.getClient()
+
+    // =====================
+    // workshops_archive
+    // =====================
+
+    const workshopsResponse =
+        await sheets.spreadsheets.values.get({
+
+            auth: client,
+
+            spreadsheetId:
+                process.env.SPREADSHEET_ID,
+
+            range:
+                'workshops_archive!A2:G'
+        })
+
+    const workshopsArchive =
+        workshopsResponse.data.values || []
+
+    // =====================
+    // registrations_archive
+    // =====================
+
+    const registrationsResponse =
+        await sheets.spreadsheets.values.get({
+
+            auth: client,
+
+            spreadsheetId:
+                process.env.SPREADSHEET_ID,
+
+            range:
+                'registrations_archive!A2:G'
+        })
+
+    const registrationsArchive =
+        registrationsResponse.data.values || []
+
+    const stats = {}
+
+    // =====================
+    // participants
+    // =====================
+
+    registrationsArchive.forEach(reg => {
+
+        const workshopId =
+            reg[0]
+
+        const workshopTitle =
+            reg[5]
+
+        const peopleCount =
+            Number(reg[4] || 1)
+
+        if (!stats[workshopId]) {
+
+            stats[workshopId] = {
+
+                title:
+                    workshopTitle,
+
+                participants: 0,
+
+                events: 0,
+
+                fillRate: 0
+            }
+        }
+
+        stats[workshopId]
+            .participants += peopleCount
+    })
+
+    // =====================
+    // fill rate
+    // =====================
+
+    workshopsArchive.forEach(workshop => {
+
+        const workshopId =
+            workshop[0]
+
+        const maxPlaces =
+            Number(workshop[4])
+
+        const actualParticipants =
+            Number(workshop[5])
+
+        if (!stats[workshopId]) {
+
+            stats[workshopId] = {
+
+                title:
+                    workshop[1],
+
+                participants: 0,
+
+                events: 0,
+
+                fillRate: 0
+            }
+        }
+
+        stats[workshopId]
+            .events += 1
+
+        stats[workshopId]
+            .fillRate +=
+            (actualParticipants /
+             maxPlaces) * 100
+    })
+
+    const rows =
+
+        Object.entries(stats)
+
+            .map(
+
+                ([id, data]) => [
+
+                    id,
+
+                    data.title,
+
+                    data.participants,
+
+                    data.events,
+
+                    (
+                        data.fillRate /
+                        data.events
+                    ).toFixed(1) + '%'
+                ]
+            )
+
+    // =====================
+    // clear
+    // =====================
+
+    await sheets
+        .spreadsheets
+        .values
+        .clear({
+
+            auth: client,
+
+            spreadsheetId:
+                process.env.SPREADSHEET_ID,
+
+            range:
+                'analytics!A:E'
+        })
+
+    // =====================
+    // headers
+    // =====================
+
+    await sheets
+        .spreadsheets
+        .values
+        .update({
+
+            auth: client,
+
+            spreadsheetId:
+                process.env.SPREADSHEET_ID,
+
+            range:
+                'analytics!A1:E1',
+
+            valueInputOption:
+                'RAW',
+
+            requestBody: {
+
+                values: [[
+
+                    'workshopId',
+
+                    'workshopTitle',
+
+                    'totalParticipants',
+
+                    'totalEvents',
+
+                    'avgFillRate'
+                ]]
+            }
+        })
+
+    // =====================
+    // rows
+    // =====================
+
+    await sheets
+        .spreadsheets
+        .values
+        .append({
+
+            auth: client,
+
+            spreadsheetId:
+                process.env.SPREADSHEET_ID,
+
+            range:
+                'analytics!A2:E',
+
+            valueInputOption:
+                'RAW',
+
+            requestBody: {
+
+                values:
+                    rows
+            }
+        })
+
+    console.log(
+        'ANALYTICS UPDATED'
+    )
+}
+
 // =========================
 // EXPORTS
 // =========================
@@ -557,5 +787,7 @@ module.exports = {
 
     addRegistration,
 
-    archiveWorkshop
+    archiveWorkshop,
+
+    generateAnalytics
 }
