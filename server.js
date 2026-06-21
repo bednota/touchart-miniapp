@@ -77,9 +77,8 @@ app.listen(PORT, () => {
     console.log(`Server started on port ${PORT}`)
 })
 
-app.post(
+app.get(
     '/archive/:id',
-
     async (req, res) => {
 
         try {
